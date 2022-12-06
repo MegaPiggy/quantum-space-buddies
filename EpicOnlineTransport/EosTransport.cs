@@ -18,6 +18,8 @@ public class EosTransport : Transport
 	private Client client;
 	private Server server;
 
+	private string address;
+
 	private Common activeNode;
 
 	[SerializeField]
@@ -150,6 +152,7 @@ public class EosTransport : Transport
 		if (!ClientActive() || client.Error)
 		{
 			Debug.Log($"Starting client, target address {address}.");
+			this.address = address;
 
 			client = Client.CreateClient(this, address);
 			activeNode = client;
@@ -285,13 +288,24 @@ public class EosTransport : Transport
 		var packets = GetPacketArray(channelId, segment);
 
 		for (var i = 0; i < packets.Length; i++)
-		{
+		{ 
 			if (connectionId == int.MinValue)
 			{
+				if (!ClientActive())
+				{
+					Debug.LogError("Tried to send a packet while client is inactive");
+					if (!string.IsNullOrWhiteSpace(address)) ClientConnect(address);
+					if (!ClientActive()) continue;
+				}
 				client.Send(packets[i].ToBytes(), channelId);
 			}
 			else
 			{
+				if (!ServerActive())
+				{
+					Debug.LogError("Tried to send a packet while server is inactive");
+					continue;
+				}
 				server.SendAll(connectionId, packets[i].ToBytes(), channelId);
 			}
 		}
